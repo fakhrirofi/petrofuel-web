@@ -1,46 +1,133 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Petrofuel Dispatch Mobile application.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="mobile">
+  <meta name="apple-mobile-web-app-title" content="Petrofuel">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
 
-  <title>mobile</title>
+  <title>Petrofuel</title>
   <link rel="manifest" href="manifest.json">
-</head>
-<body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async></script>
+  <style>
+    body {
+      background-color: #0f172a;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    #loading-container {
+      text-align: center;
+      color: #e2e8f0;
+      transition: opacity 0.5s ease;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      border-top-color: #3b82f6;
+      animation: spin 1s ease-in-out infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    #status-text {
+      font-size: 16px;
+      font-weight: 500;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="loading-container">
+    <div class="spinner"></div>
+    <div id="status-text">Application loading...</div>
+  </div>
+
+  <script>
+    const statusText = document.getElementById('status-text');
+
+    async function checkVersionAndBoot() {
+      try {
+        const storedVersion = localStorage.getItem('app_version');
+        const response = await fetch('version.json?t=' + Date.now());
+        if (response.ok) {
+          const serverData = await response.json();
+          const serverVersion = serverData.version + '+' + serverData.build_number;
+
+          if (storedVersion && storedVersion !== serverVersion) {
+            statusText.textContent = 'Updating to latest app version...';
+            localStorage.setItem('app_version', serverVersion);
+
+            // Clear old service worker registrations to flush cache
+            if ('serviceWorker' in navigator) {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              for (let registration of registrations) {
+                await registration.unregister();
+              }
+            }
+
+            // Force reload page to fetch fresh version from server
+            setTimeout(() => {
+              window.location.reload(true);
+            }, 800);
+            return;
+          } else if (!storedVersion) {
+            localStorage.setItem('app_version', serverVersion);
+          }
+        }
+      } catch (e) {
+        console.log('Version check skipped (offline or error):', e);
+      }
+
+      // Version is up-to-date or offline, boot Flutter
+      loadFlutter();
+    }
+
+    function loadFlutter() {
+      const container = document.getElementById('loading-container');
+      const script = document.createElement('script');
+      script.src = 'flutter_bootstrap.js';
+      script.async = true;
+      script.onload = () => {
+        // Once bootstrap runs and initializes the app, fade out the spinner
+        if (container) {
+          container.style.opacity = 0;
+          setTimeout(() => container.remove(), 500);
+        }
+      };
+      document.body.appendChild(script);
+    }
+
+    // Execute checker
+    checkVersionAndBoot();
+  </script>
 </body>
+
 </html>
