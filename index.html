@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <base href="/">
 
@@ -15,14 +14,14 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>Petrofuel</title>
   <link rel="manifest" href="manifest.json">
 
   <style>
     body {
-      background-color: #0f172a;
+      background-color: #f8fafc; /* Light gray background */
       margin: 0;
       padding: 0;
       height: 100vh;
@@ -32,48 +31,49 @@
       align-items: center;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-
     #loading-container {
       text-align: center;
-      color: #e2e8f0;
+      color: #0f172a; /* Dark text color */
       transition: opacity 0.5s ease;
     }
-
     .spinner {
       width: 50px;
       height: 50px;
-      border: 4px solid rgba(255, 255, 255, 0.1);
+      border: 4px solid rgba(15, 23, 42, 0.1);
       border-radius: 50%;
-      border-top-color: #3b82f6;
+      border-top-color: #3b82f6; /* Blue spinner */
       animation: spin 1s ease-in-out infinite;
       margin: 0 auto 20px;
     }
-
     @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
+      to { transform: rotate(360deg); }
     }
-
     #status-text {
       font-size: 16px;
       font-weight: 500;
-      color: #94a3b8;
+      color: #475569; /* Slate gray text */
       letter-spacing: 0.5px;
     }
   </style>
 </head>
-
 <body>
   <div id="loading-container">
     <div class="spinner"></div>
-    <div id="status-text">Application loading...</div>
+    <div id="status-text">Memuat aplikasi...</div>
   </div>
 
   <script>
     const statusText = document.getElementById('status-text');
 
     async function checkVersionAndBoot() {
+      // 1. Listen for new service worker installation and activation
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          // New worker took control, reload page
+          window.location.reload();
+        });
+      }
+
       try {
         const storedVersion = localStorage.getItem('app_version');
         const response = await fetch('version.json?t=' + Date.now());
@@ -82,22 +82,39 @@
           const serverVersion = serverData.version + '+' + serverData.build_number;
 
           if (storedVersion && storedVersion !== serverVersion) {
-            statusText.textContent = 'Updating to latest app version...';
+            statusText.textContent = 'Memperbarui ke versi terbaru...';
             localStorage.setItem('app_version', serverVersion);
 
-            // Clear old service worker registrations to flush cache
             if ('serviceWorker' in navigator) {
-              const registrations = await navigator.serviceWorker.getRegistrations();
-              for (let registration of registrations) {
-                await registration.unregister();
-              }
-            }
+              const registration = await navigator.serviceWorker.ready;
+              
+              // Force checking for updates immediately
+              statusText.textContent = 'Mengunduh pembaruan...';
+              await registration.update();
+              
+              // Watch for newly found install workers
+              registration.addEventListener('updatefound', () => {
+                const installingWorker = registration.installing;
+                if (installingWorker) {
+                  installingWorker.addEventListener('statechange', () => {
+                    if (installingWorker.state === 'installed') {
+                      installingWorker.postMessage({ action: 'skipWaiting' });
+                    }
+                  });
+                }
+              });
 
-            // Force reload page to fetch fresh version from server
-            setTimeout(() => {
-              window.location.reload(true);
-            }, 800);
-            return;
+              // If a worker is already waiting in background, activate it
+              if (registration.waiting) {
+                registration.waiting.postMessage({ action: 'skipWaiting' });
+              }
+
+              // Safety fallback: reload page after 8 seconds if update gets stuck
+              setTimeout(() => {
+                window.location.reload();
+              }, 8000);
+              return;
+            }
           } else if (!storedVersion) {
             localStorage.setItem('app_version', serverVersion);
           }
@@ -106,7 +123,7 @@
         console.log('Version check skipped (offline or error):', e);
       }
 
-      // Version is up-to-date or offline, boot Flutter
+      // No update found or offline, boot normally
       loadFlutter();
     }
 
@@ -116,7 +133,6 @@
       script.src = 'flutter_bootstrap.js';
       script.async = true;
       script.onload = () => {
-        // Once bootstrap runs and initializes the app, fade out the spinner
         if (container) {
           container.style.opacity = 0;
           setTimeout(() => container.remove(), 500);
@@ -125,9 +141,8 @@
       document.body.appendChild(script);
     }
 
-    // Execute checker
+    // Execute check
     checkVersionAndBoot();
   </script>
 </body>
-
 </html>
