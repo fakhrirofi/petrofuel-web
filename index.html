@@ -64,21 +64,21 @@
 
   <script>
     const statusText = document.getElementById('status-text');
+    let isUpdating = false;
 
     // Push a dummy history state to prevent PWA from closing on back swipe
     if (window.history.state === null || !window.history.state.pwa_init) {
       window.history.pushState({ pwa_init: true }, '', window.location.href);
     }
 
-    async function checkVersionAndBoot() {
-      // 1. Listen for new service worker installation and activation
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          // New worker took control, reload page
-          window.location.reload();
-        });
-      }
+    // Listen for controller change (new worker takes control)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    }
 
+    async function checkVersionAndBoot() {
       try {
         const storedVersion = localStorage.getItem('app_version');
         const response = await fetch('version.json?t=' + Date.now());
@@ -87,39 +87,40 @@
           const serverVersion = serverData.version + '+' + serverData.build_number;
 
           if (storedVersion && storedVersion !== serverVersion) {
+            isUpdating = true;
             statusText.textContent = 'Memperbarui ke versi terbaru...';
             localStorage.setItem('app_version', serverVersion);
 
             if ('serviceWorker' in navigator) {
-              const registration = await navigator.serviceWorker.ready;
-              
-              // Force checking for updates immediately
-              statusText.textContent = 'Mengunduh pembaruan...';
-              await registration.update();
-              
-              // Watch for newly found install workers
-              registration.addEventListener('updatefound', () => {
-                const installingWorker = registration.installing;
-                if (installingWorker) {
-                  installingWorker.addEventListener('statechange', () => {
-                    if (installingWorker.state === 'installed') {
-                      installingWorker.postMessage({ action: 'skipWaiting' });
-                    }
-                  });
+              const registration = await navigator.serviceWorker.getRegistration();
+              if (registration) {
+                // Force check for updates
+                registration.update();
+                
+                // If a worker is already waiting in background, activate it
+                if (registration.waiting) {
+                  registration.waiting.postMessage({ action: 'skipWaiting' });
                 }
-              });
-
-              // If a worker is already waiting in background, activate it
-              if (registration.waiting) {
-                registration.waiting.postMessage({ action: 'skipWaiting' });
+                
+                // Watch for newly found install workers
+                registration.addEventListener('updatefound', () => {
+                  const installingWorker = registration.installing;
+                  if (installingWorker) {
+                    installingWorker.addEventListener('statechange', () => {
+                      if (installingWorker.state === 'installed') {
+                        installingWorker.postMessage({ action: 'skipWaiting' });
+                      }
+                    });
+                  }
+                });
               }
-
-              // Safety fallback: reload page after 8 seconds if update gets stuck
-              setTimeout(() => {
-                window.location.reload();
-              }, 8000);
-              return;
             }
+
+            // Safety fallback: reload page after 6 seconds if update gets stuck
+            setTimeout(() => {
+              window.location.reload();
+            }, 6000);
+            return;
           } else if (!storedVersion) {
             localStorage.setItem('app_version', serverVersion);
           }
@@ -133,6 +134,7 @@
     }
 
     function loadFlutter() {
+      if (isUpdating) return;
       const container = document.getElementById('loading-container');
       const script = document.createElement('script');
       script.src = 'flutter_bootstrap.js';
