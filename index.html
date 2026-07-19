@@ -65,6 +65,11 @@
   <script>
     const statusText = document.getElementById('status-text');
 
+    // Push a dummy history state to prevent PWA from closing on back swipe
+    if (window.history.state === null || !window.history.state.pwa_init) {
+      window.history.pushState({ pwa_init: true }, '', window.location.href);
+    }
+
     async function checkVersionAndBoot() {
       // 1. Listen for new service worker installation and activation
       if ('serviceWorker' in navigator) {
