@@ -66,10 +66,7 @@
     const statusText = document.getElementById('status-text');
     let isUpdating = false;
 
-    // Push a dummy history state to prevent PWA from closing on back swipe
-    if (window.history.state === null || !window.history.state.pwa_init) {
-      window.history.pushState({ pwa_init: true }, '', window.location.href);
-    }
+
 
     // Listen for controller change (new worker takes control)
     if ('serviceWorker' in navigator) {
