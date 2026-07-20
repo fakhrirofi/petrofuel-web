@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <base href="/">
 
@@ -14,14 +15,15 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
 
   <title>Petrofuel</title>
   <link rel="manifest" href="manifest.json">
 
   <style>
     body {
-      background-color: #f8fafc; /* Light gray background */
+      background-color: #f8fafc;
+      /* Light gray background */
       margin: 0;
       padding: 0;
       height: 100vh;
@@ -31,31 +33,41 @@
       align-items: center;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
+
     #loading-container {
       text-align: center;
-      color: #0f172a; /* Dark text color */
+      color: #0f172a;
+      /* Dark text color */
       transition: opacity 0.5s ease;
     }
+
     .spinner {
       width: 50px;
       height: 50px;
       border: 4px solid rgba(15, 23, 42, 0.1);
       border-radius: 50%;
-      border-top-color: #3b82f6; /* Blue spinner */
+      border-top-color: #3b82f6;
+      /* Blue spinner */
       animation: spin 1s ease-in-out infinite;
       margin: 0 auto 20px;
     }
+
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
+
     #status-text {
       font-size: 16px;
       font-weight: 500;
-      color: #475569; /* Slate gray text */
+      color: #475569;
+      /* Slate gray text */
       letter-spacing: 0.5px;
     }
   </style>
 </head>
+
 <body>
   <div id="loading-container">
     <div class="spinner"></div>
@@ -66,7 +78,17 @@
     const statusText = document.getElementById('status-text');
     let isUpdating = false;
 
-
+    // --- NEW: Register Custom Service Worker ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then((registration) => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }).catch((err) => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+    // -------------------------------------------
 
     // Listen for controller change (new worker takes control)
     if ('serviceWorker' in navigator) {
@@ -100,12 +122,12 @@
               if (registration) {
                 // Force check for updates
                 registration.update();
-                
+
                 // If a worker is already waiting in background, activate it
                 if (registration.waiting) {
                   registration.waiting.postMessage({ action: 'skipWaiting' });
                 }
-                
+
                 // Watch for newly found install workers
                 registration.addEventListener('updatefound', () => {
                   const installingWorker = registration.installing;
@@ -156,4 +178,5 @@
     checkVersionAndBoot();
   </script>
 </body>
+
 </html>
