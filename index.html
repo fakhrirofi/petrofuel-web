@@ -76,6 +76,13 @@
     }
 
     async function checkVersionAndBoot() {
+      // Skip network fetch completely if browser is offline to prevent Chrome from intercepting and showing offline screen
+      if (navigator.onLine === false) {
+        console.log('Browser is offline, booting from cache immediately.');
+        loadFlutter();
+        return;
+      }
+
       try {
         const storedVersion = localStorage.getItem('app_version');
         const response = await fetch('version.json?t=' + Date.now());
