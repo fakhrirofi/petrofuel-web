@@ -1,6 +1,6 @@
 // Petrofuel PWA Service Worker
 // Automatically versioned by deploy_web.py on every release
-const CACHE_NAME = 'petrofuel-v1.0.24-b61';
+const CACHE_NAME = 'petrofuel-v1.0.25-b62';
 
 // Core application shell files to pre-cache (using universal relative paths)
 const CORE_ASSETS = [
